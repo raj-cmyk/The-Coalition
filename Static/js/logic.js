@@ -35,7 +35,7 @@ L.control.layers(baseLayers, overlays).addTo(mymap);
 }
 
 function createMarkers() {
-    var coal = "../Resources/coal";
+    var coal = "data/coal.json";
 
     var coalMarkers = [];
 
