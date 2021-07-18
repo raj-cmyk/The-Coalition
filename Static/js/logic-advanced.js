@@ -106,28 +106,29 @@ var icons = {
 };
 
 // Perform an API call to the Citi Bike Station Information endpoint
-d3.json("https://gbfs.citibikenyc.com/gbfs/en/station_information.json", function(infoRes) {
+d3.json("data/combined.json", function(infoRes) {
 
   // When the first API call is complete, perform another call to the Citi Bike Station Status endpoint
-  d3.json("https://gbfs.citibikenyc.com/gbfs/en/station_status.json", function(statusRes) {
+  //d3.json("https://gbfs.citibikenyc.com/gbfs/en/station_status.json", function(statusRes) {
+    //var stationStatus = statusRes.data.stations;
     var updatedAt = infoRes.last_updated;
-    var stationStatus = statusRes.data.stations;
     var stationInfo = infoRes.data.stations;
 
     // Create an object to keep of the number of markers in each layer
     var stationCount = {
-      COMING_SOON: 0,
-      EMPTY: 0,
-      LOW: 0,
-      NORMAL: 0,
-      OUT_OF_ORDER: 0
+      coal: 0,
+      solar: 0,
+      wind: 0,
+      hydroelectric: 0,
+      nuclear: 0,
+      naturalgas: 0
     };
 
     // Initialize a stationStatusCode, which will be used as a key to access the appropriate layers, icons, and station count for layer group
     var stationStatusCode;
 
     // Loop through the stations (they're the same size and have partially matching data)
-    for (var i = 0; i < stationInfo.length; i++) {
+    for (var i = 0; i < infores.length; i++) {
 
       // Create a new station object with properties of both station objects
       var station = Object.assign({}, stationInfo[i], stationStatus[i]);
