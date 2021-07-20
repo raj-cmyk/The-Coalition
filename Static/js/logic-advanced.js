@@ -1,6 +1,6 @@
 var lightmap = L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
   attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
-  maxZoom: 13,
+  maxZoom: 15,
   id: "light-v10",
   accessToken: API_KEY
 });
@@ -12,7 +12,8 @@ var layers = {
   wind: new L.LayerGroup(),
   hydroelectric: new L.LayerGroup(),
   nuclear: new L.LayerGroup(),
-  naturalgas: new L.LayerGroup()
+  naturalgas: new L.LayerGroup(),
+  other: new L.LayerGroup()
 
 //   NORMAL: new L.LayerGroup(),
 //   OUT_OF_ORDER: new L.LayerGroup()
@@ -20,15 +21,16 @@ var layers = {
 
 // Create the map with our layers
 var map = L.map("map", {
-  center: [29.8968, -110.5828],
-  zoom: 12,
+  center: [40.426726271279165, -99.65842250402241],
+  zoom: 5,
   layers: [
     layers.coal,
     layers.solar,
     layers.wind,
     layers.hydroelectric,
     layers.nuclear,
-    layers.naturalgas
+    layers.naturalgas,
+    layers.other
     //layers.NORMAL,
     //layers.OUT_OF_ORDER
   ]
@@ -44,7 +46,8 @@ var overlays = {
   "Wind": layers.wind,
   "Hydroelectric": layers.hydroelectric,
   "Nuclear": layers.nuclear,
-  "Natural Gas": layers.naturalgas
+  "Natural Gas": layers.naturalgas,
+  "Other": layers.other
   //"Healthy Stations": layers.NORMAL,
   //"Out of Order": layers.OUT_OF_ORDER
 };
@@ -102,18 +105,25 @@ var icons = {
     iconColor: "white",
     markerColor: "green",
     shape: "circle"
+  }),
+  other: L.ExtraMarkers.icon({
+    icon: "ion-settings",
+    iconColor: "white",
+    markerColor: "purple",
+    shape: "circle"
   })
 };
 
 // Perform an API call to the Citi Bike Station Information endpoint
-d3.json("Resource/Json/y2018", function(infoRes) {
-
-  // When the first API call is complete, perform another call to the Citi Bike Station Status endpoint
-  //d3.json("https://gbfs.citibikenyc.com/gbfs/en/station_status.json", function(statusRes) {
-    //var stationStatus = statusRes.data.stations;
-    var updatedAt = infoRes.last_updated;
-    var stationInfo = infoRes.data.stations;
-
+d3.json("data/y2018.json",(infoRes) => {
+console.log(infoRes)
+  // // When the first API call is complete, perform another call to the Citi Bike Station Status endpoint
+  // //d3.json("https://gbfs.citibikenyc.com/gbfs/en/station_status.json", function(statusRes) {
+  //   //var stationStatus = statusRes.data.stations;
+  //   //var updatedAt = infoRes.last_updated;
+  //   //var stationInfo = infoRes.data.stations;
+    
+    console.log(tech)
     // Create an object to keep of the number of markers in each layer
     var stationCount = {
       coal: 0,
@@ -121,42 +131,53 @@ d3.json("Resource/Json/y2018", function(infoRes) {
       wind: 0,
       hydroelectric: 0,
       nuclear: 0,
-      naturalgas: 0
+      naturalgas: 0,
+      other: 0
     };
 
     // Initialize a stationStatusCode, which will be used as a key to access the appropriate layers, icons, and station count for layer group
     var stationStatusCode;
 
     // Loop through the stations (they're the same size and have partially matching data)
-    for (var i = 0; i < infores.length; i++) {
+    for (var i = 0; i < infoRes.length; i++) {
+      var tech = infoRes[i].Technology;
+      var lat = infoRes[i].Latitude;
+      var long = infoRes[i].Longitude;
+      var state = infoRes[i].State;
 
       // Create a new station object with properties of both station objects
-      var station = Object.assign({}, stationInfo[i], stationStatus[i]);
+      //var station = Object.assign({}, tech[i], stationStatus[i]);
       // If a station is listed but not installed, it's coming soon
-      if (!station.is_installed) {
-        stationStatusCode = "COMING_SOON";
+      if (tech === "Coal") {
+        stationStatusCode = "coal";
       }
       // If a station has no bikes available, it's empty
-      else if (!station.num_bikes_available) {
-        stationStatusCode = "EMPTY";
+      else if (tech === "Solar") {
+        stationStatusCode = "solar";
       }
       // If a station is installed but isn't renting, it's out of order
-      else if (station.is_installed && !station.is_renting) {
-        stationStatusCode = "OUT_OF_ORDER";
+      else if (tech === "Wind") {
+        stationStatusCode = "wind";
       }
       // If a station has less than 5 bikes, it's status is low
-      else if (station.num_bikes_available < 5) {
-        stationStatusCode = "LOW";
+      else if (tech === "Hydroelectric") {
+        stationStatusCode = "hydroelectric";
+      }
+      else if (tech === "Nuclear") {
+        stationStatusCode = "nuclear";
+      }
+      else if (tech === "Natural Gas") {
+        stationStatusCode = "naturalgas";
       }
       // Otherwise the station is normal
       else {
-        stationStatusCode = "NORMAL";
+        stationStatusCode = "other";
       }
 
       // Update the station count
       stationCount[stationStatusCode]++;
       // Create a new marker with the appropriate icon and coordinates
-      var newMarker = L.marker([station.lat, station.lon], {
+      var newMarker = L.marker([lat, long], {
         icon: icons[stationStatusCode]
       });
 
@@ -164,22 +185,23 @@ d3.json("Resource/Json/y2018", function(infoRes) {
       newMarker.addTo(layers[stationStatusCode]);
 
       // Bind a popup to the marker that will  display on click. This will be rendered as HTML
-      newMarker.bindPopup(station.name + "<br> Capacity: " + station.capacity + "<br>" + station.num_bikes_available + " Bikes Available");
+      newMarker.bindPopup(tech + "<br> State: " + state);
     }
 
     // Call the updateLegend function, which will... update the legend!
-    updateLegend(updatedAt, stationCount);
-  });
+    updateLegend(stationCount);
 });
 
+
 // Update the legend's innerHTML with the last updated time and station count
-function updateLegend(time, stationCount) {
+function updateLegend(stationCount) {
   document.querySelector(".legend").innerHTML = [
-    "<p>Updated: " + moment.unix(time).format("h:mm:ss A") + "</p>",
-    "<p class='out-of-order'>Out of Order Stations: " + stationCount.OUT_OF_ORDER + "</p>",
-    "<p class='coming-soon'>Stations Coming Soon: " + stationCount.COMING_SOON + "</p>",
-    "<p class='empty'>Empty Stations: " + stationCount.EMPTY + "</p>",
-    "<p class='low'>Low Stations: " + stationCount.LOW + "</p>",
-    "<p class='healthy'>Healthy Stations: " + stationCount.NORMAL + "</p>"
+    "<p class='Coal'>Coal: " + stationCount.coal + "</p>",
+    "<p class='Solar'>Solar: " + stationCount.solar + "</p>",
+    "<p class='Wind'>Wind: " + stationCount.wind + "</p>",
+    "<p class='Hydroelectric'>Hydrelectric: " + stationCount.hydroelectric + "</p>",
+    "<p class='Nuclear'>Nuclear: " + stationCount.nuclear + "</p>",
+    "<p class='NaturalGas'>Natural Gas: " + stationCount.naturalgas + "</p>",
+    "<p class='Other'>Other: " + stationCount.other + "</p>"
   ].join("");
 }
