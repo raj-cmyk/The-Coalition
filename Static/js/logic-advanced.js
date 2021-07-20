@@ -5,7 +5,7 @@ var lightmap = L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/{
   accessToken: API_KEY
 });
 
-// Initialize all of the LayerGroups we'll be using
+// Create all of the energy LayerGroups we'll be using
 var layers = {
   coal: new L.LayerGroup(),
   solar: new L.LayerGroup(),
@@ -14,12 +14,9 @@ var layers = {
   nuclear: new L.LayerGroup(),
   naturalgas: new L.LayerGroup(),
   other: new L.LayerGroup()
-
-//   NORMAL: new L.LayerGroup(),
-//   OUT_OF_ORDER: new L.LayerGroup()
 };
 
-// Create the map with our layers
+// Create the map and add the layers we created above
 var map = L.map("map", {
   center: [40.426726271279165, -99.65842250402241],
   zoom: 5,
@@ -31,12 +28,10 @@ var map = L.map("map", {
     layers.nuclear,
     layers.naturalgas,
     layers.other
-    //layers.NORMAL,
-    //layers.OUT_OF_ORDER
   ]
 });
 
-// Add our 'lightmap' tile layer to the map
+// Add our basemap(lightmap) tile layer to the map
 lightmap.addTo(map);
 
 // Create an overlays object to add to the layer control
@@ -48,8 +43,6 @@ var overlays = {
   "Nuclear": layers.nuclear,
   "Natural Gas": layers.naturalgas,
   "Other": layers.other
-  //"Healthy Stations": layers.NORMAL,
-  //"Out of Order": layers.OUT_OF_ORDER
 };
 
 // Create a control for our layers, add our overlay layers to it
@@ -114,17 +107,12 @@ var icons = {
   })
 };
 
-// Perform an API call to the Citi Bike Station Information endpoint
+// Import and read JSON from local file, console.log results to make sure data is imported correctly
 d3.json("data/y2018.json",(infoRes) => {
 console.log(infoRes)
-  // // When the first API call is complete, perform another call to the Citi Bike Station Status endpoint
-  // //d3.json("https://gbfs.citibikenyc.com/gbfs/en/station_status.json", function(statusRes) {
-  //   //var stationStatus = statusRes.data.stations;
-  //   //var updatedAt = infoRes.last_updated;
-  //   //var stationInfo = infoRes.data.stations;
-    
     console.log(tech)
-    // Create an object to keep of the number of markers in each layer
+
+    // Create a blank object array that will be used in the legend to count each energy station generation type
     var stationCount = {
       coal: 0,
       solar: 0,
@@ -135,10 +123,10 @@ console.log(infoRes)
       other: 0
     };
 
-    // Initialize a stationStatusCode, which will be used as a key to access the appropriate layers, icons, and station count for layer group
+    // Initialize a stationStatusCode, which will be used to link layers to icons to stationCounts
     var stationStatusCode;
 
-    // Loop through the stations (they're the same size and have partially matching data)
+    // Loop through the stations and retreive relevant info from the JSON (Generation Type, Lat, Long, State the station is located in)
     for (var i = 0; i < infoRes.length; i++) {
       var tech = infoRes[i].Technology;
       var lat = infoRes[i].Latitude;
@@ -146,37 +134,39 @@ console.log(infoRes)
       var state = infoRes[i].State;
 
       // Create a new station object with properties of both station objects
-      //var station = Object.assign({}, tech[i], stationStatus[i]);
-      // If a station is listed but not installed, it's coming soon
+      
+      // find all energy stations that use coal power
       if (tech === "Coal") {
         stationStatusCode = "coal";
       }
-      // If a station has no bikes available, it's empty
+      // find all energy stations that use solar power
       else if (tech === "Solar") {
         stationStatusCode = "solar";
       }
-      // If a station is installed but isn't renting, it's out of order
+      // find all energy stations that use wind power
       else if (tech === "Wind") {
         stationStatusCode = "wind";
       }
-      // If a station has less than 5 bikes, it's status is low
+      // find all energy stations that use hydroelectric power
       else if (tech === "Hydroelectric") {
         stationStatusCode = "hydroelectric";
       }
+      // find all energy stations that use nuclear power
       else if (tech === "Nuclear") {
         stationStatusCode = "nuclear";
       }
+      // find all energy stations that use natural gas power
       else if (tech === "Natural Gas") {
         stationStatusCode = "naturalgas";
       }
-      // Otherwise the station is normal
+      // all other generation types fall into the "other" category
       else {
         stationStatusCode = "other";
       }
 
-      // Update the station count
+      // Update the station count each time an energy count is found
       stationCount[stationStatusCode]++;
-      // Create a new marker with the appropriate icon and coordinates
+      // Create a new marker with the appropriate icon and coordinates based on statusCode(energy type)
       var newMarker = L.marker([lat, long], {
         icon: icons[stationStatusCode]
       });
@@ -184,11 +174,11 @@ console.log(infoRes)
       // Add the new marker to the appropriate layer
       newMarker.addTo(layers[stationStatusCode]);
 
-      // Bind a popup to the marker that will  display on click. This will be rendered as HTML
+      // Bind a popup to the marker that will  display generation type and State on click.
       newMarker.bindPopup(tech + "<br> State: " + state);
     }
 
-    // Call the updateLegend function, which will... update the legend!
+    // Call the updateLegend function, which will create the legend
     updateLegend(stationCount);
 });
 
